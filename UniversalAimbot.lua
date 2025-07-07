@@ -1,9 +1,11 @@
 --[[
     SupaSt4r Universal - Combat Hub
-    Version: 3.3 (Branding Update)
+    Version: 3.4 (Rig-Adaptive Targeting Fix)
 
-    - Title changed as per user request.
-    - Core ESP and Aimbot functionality remains unchanged from the last stable version.
+    - FIXED: A critical flaw where the aimbot failed to detect R15 players.
+    - RE-ENGINEERED: The visibility check is now rig-adaptive, using the 'UpperTorso'
+                 (R15) or 'Torso' (R6) for reliable detection, ensuring all
+                 players are picked up correctly.
 ]]
 
 --//============================================================================================//
@@ -20,7 +22,7 @@ local CONFIG = {
     -- Aimbot Toggles & Settings
     Aimbot = true,
     SmoothingEnabled = false,
-    AimPart = "Head",
+    AimPart = "Head", -- This is still the final aiming point
     SmoothingValue = 0.2,
 
     -- Colors
@@ -43,10 +45,7 @@ local isAiming = false
 local currentTarget = nil
 
 --// Control Panel GUI
-local guiFrame = Instance.new("Frame", mainGui); guiFrame.Size = UDim2.new(0, 220, 0, 230);
-guiFrame.Position = UDim2.new(0.01, 0, 0.5, -115); guiFrame.BackgroundColor3 = Color3.fromRGB(30,30,30); guiFrame.BorderColor3 = Color3.fromRGB(150,150,150); guiFrame.Draggable = true
-
--- [MODIFIED] Title text updated
+local guiFrame = Instance.new("Frame", mainGui); guiFrame.Size = UDim2.new(0, 220, 0, 230); guiFrame.Position = UDim2.new(0.01, 0, 0.5, -115); guiFrame.BackgroundColor3 = Color3.fromRGB(30,30,30); guiFrame.BorderColor3 = Color3.fromRGB(150,150,150); guiFrame.Draggable = true
 local title = Instance.new("TextLabel", guiFrame); title.Size = UDim2.new(1,0,0,25); title.BackgroundColor3 = Color3.fromRGB(40,40,40); title.Text = "SupaSt4r Universal"; title.Font = Enum.Font.SourceSansBold; title.TextColor3 = Color3.new(1,1,1)
 
 local function createToggle(text, yPos, key, callback)
@@ -56,18 +55,18 @@ local function createToggle(text, yPos, key, callback)
     return btn
 end
 
-createToggle("Master Toggle", 35, "Enabled")
-createToggle("Box ESP", 70, "BoxESP")
-createToggle("Name ESP", 105, "NameESP")
-
+createToggle("Master Toggle", 35, "Enabled"); createToggle("Box ESP", 70, "BoxESP"); createToggle("Name ESP", 105, "NameESP")
 local smoothButton = createToggle("Smooth Aimbot", 175, "SmoothingEnabled")
-local aimbotButton = createToggle("Aimbot", 140, "Aimbot", function(enabled)
-    smoothButton.Visible = enabled
-end)
+local aimbotButton = createToggle("Aimbot", 140, "Aimbot", function(enabled) smoothButton.Visible = enabled end)
 smoothButton.Visible = CONFIG.Aimbot
 
 --// ESP Element Creation
 local function createESPElements(p) local c=Instance.new("Frame", mainGui);c.Name=p.Name;c.BackgroundTransparency=1;c.Size=UDim2.new(1,0,1,0);local b=Instance.new("Frame", c);b.Name="Box";b.BackgroundTransparency=1;b.ZIndex=2;Instance.new("UIStroke",b).Thickness=1;local n=Instance.new("TextLabel",c);n.Name="NameLabel";n.BackgroundTransparency=1;n.Font=Enum.Font.SourceSans;n.TextSize=13;n.ZIndex=2;return{Container=c,Box=b,Name=n}end
+
+--// [NEW] Helper function to get a reliable body part for visibility checks
+local function getBestRaycastPart(character)
+    return character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso") or character:FindFirstChild("Head")
+end
 
 --// Main Render Loop
 RunService.RenderStepped:Connect(function()
@@ -79,11 +78,21 @@ RunService.RenderStepped:Connect(function()
             local head = character:FindFirstChild("Head"); if not head then continue end
             local headPos, onScreen = Camera:WorldToScreenPoint(head.Position); if not onScreen then elements.Container.Visible = false; continue end
             elements.Container.Visible = true
-            local isVisible = false; local rayParams = RaycastParams.new(); rayParams.FilterType = Enum.RaycastFilterType.Exclude; rayParams.FilterDescendantsInstances = {player.Character}; local result = workspace:Raycast(Camera.CFrame.Position, (head.Position - Camera.CFrame.Position), rayParams); if not result or result.Instance:IsDescendantOf(character) then isVisible = true end
+            
+            -- [REWORKED] Visibility Check
+            local isVisible = false
+            local raycastPart = getBestRaycastPart(character) -- Use the new function
+            if raycastPart then
+                local rayParams = RaycastParams.new(); rayParams.FilterType = Enum.RaycastFilterType.Exclude; rayParams.FilterDescendantsInstances = {player.Character}
+                local result = workspace:Raycast(Camera.CFrame.Position, (raycastPart.Position - Camera.CFrame.Position), rayParams)
+                if not result or result.Instance:IsDescendantOf(character) then isVisible = true end
+            end
+            
             local drawColor = (p == currentTarget) and CONFIG.TargetColor or (isVisible and CONFIG.VisibleColor or CONFIG.OccludedColor)
             local footPos = Camera:WorldToScreenPoint(character.HumanoidRootPart.Position - Vector3.new(0,3,0)).Y; local boxHeight = math.abs(headPos.Y - footPos); local boxWidth = boxHeight/1.75; local boxPos = Vector2.new(headPos.X - boxWidth/2, headPos.Y)
             elements.Name.Visible = CONFIG.NameESP; if CONFIG.NameESP then local dist = (player.Character.HumanoidRootPart.Position-character.HumanoidRootPart.Position).Magnitude; elements.Name.Text = string.format("%s\n[%.fm|%dHP]", p.Name, dist, math.floor(humanoid.Health)); elements.Name.TextColor3 = drawColor; elements.Name.Position = UDim2.fromOffset(headPos.X - (elements.Name.TextBounds.X / 2), headPos.Y - 15) end
             elements.Box.Visible = CONFIG.BoxESP; if CONFIG.BoxESP then elements.Box.Position = UDim2.fromOffset(boxPos.X, boxPos.Y); elements.Box.Size = UDim2.fromOffset(boxWidth, boxHeight); elements.Box.UIStroke.Color = drawColor end
+            
             if isVisible then local distFromMouse = (Vector2.new(headPos.X, headPos.Y) - mousePos).Magnitude; if distFromMouse < smallestDist then smallestDist = distFromMouse; bestTarget = p end end
         else if espElements[p] then espElements[p].Container.Visible = false end end
     end
