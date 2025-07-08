@@ -1,8 +1,9 @@
 --[[
     Genius Universal Script Hub Loader - The Engine
-    Version: 2.7 (Fisch Game Module Added)
+    Version: 2.8 (Player Fishserver Module Added)
 
-    - The manifest has been updated with the PlaceId for "Fisch Game".
+    - The manifest has been updated to support "Player Fishserver" by mapping
+      its PlaceId to the existing "FischGame.lua" script.
 ]]
 
 --//============================================================================================//
@@ -19,7 +20,8 @@ local CONFIG = {
     -- The manifest for game-specific scripts
     ScriptManifest = {
         [78041891124723] = { name = "Blood Debt", path = "BloodDebt.lua" },
-        [16732694052] = { name = "Fisch Game", path = "FischGame.lua" } -- Added
+        [16732694052] = { name = "Fisch Game", path = "FischGame.lua" },
+        [131716211654599] = { name = "Player Fishserver", path = "FischGame.lua" } -- Added
     },
 
     -- Authentication Keys
