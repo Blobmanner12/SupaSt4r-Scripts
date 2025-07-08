@@ -1,10 +1,8 @@
 --[[
     Genius Universal Script Hub Loader - The Engine
-    Version: 2.6 (Streamlined Authentication)
+    Version: 2.7 (Fisch Game Module Added)
 
-    - REMOVED: The complex, two-button loader GUI has been completely removed to fix visibility bugs.
-    - RE-ARCHITECTED: The initial authentication prompt is now the ONLY GUI. It intelligently
-                    loads the correct script based on which key is entered (Hub Key or Aimbot Key).
+    - The manifest has been updated with the PlaceId for "Fisch Game".
 ]]
 
 --//============================================================================================//
@@ -21,6 +19,7 @@ local CONFIG = {
     -- The manifest for game-specific scripts
     ScriptManifest = {
         [78041891124723] = { name = "Blood Debt", path = "BloodDebt.lua" },
+        [16732694052] = { name = "Fisch Game", path = "FischGame.lua" } -- Added
     },
 
     -- Authentication Keys
@@ -50,7 +49,7 @@ local getKeyButton = Instance.new("TextButton", authFrame); getKeyButton.Size = 
 local function executeLoadstring(path, isAimbot)
     local url = CONFIG.GitHubBaseURL .. path
     authStatusLabel.TextColor3 = Color3.fromRGB(0, 200, 255);
-    authStatusLabel.Text = "Fetching " .. (isAimbot and "Universal Aimbot" or "Game Hub") .. "..."
+    authStatusLabel.Text = "Fetching " .. (isAimbot and "Universal Aimbot" or (GameInfo and GameInfo.name or "Script")) .. "..."
 
     local success, response = pcall(game.HttpGet, game, url)
     if success then
@@ -68,28 +67,19 @@ local function executeLoadstring(path, isAimbot)
     end
 end
 
---// --- RE-ARCHITECTED AUTHENTICATION LOGIC ---
+-- Authentication Logic
 submitButton.MouseButton1Click:Connect(function()
     local enteredKey = keyBox.Text
-    
     if enteredKey == CONFIG.AimbotKey then
-        -- If the aimbot key is entered, load the universal aimbot script directly.
         executeLoadstring(CONFIG.UniversalAimbotPath, true)
-        
     elseif enteredKey == CONFIG.HubKey then
-        -- If the hub key is entered, check if the game is supported.
         if GameInfo then
             executeLoadstring(GameInfo.path, false)
         else
-            authStatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80);
-            authStatusLabel.Text = "Correct Hub Key, but game not supported.";
+            authStatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80); authStatusLabel.Text = "Correct Hub Key, but game not supported.";
         end
-        
     else
-        -- If neither key matches, show an error.
-        authStatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80);
-        authStatusLabel.Text = "Incorrect Key.";
-        keyBox.Text = ""
+        authStatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80); authStatusLabel.Text = "Incorrect Key."; keyBox.Text = ""
     end
 end)
 
